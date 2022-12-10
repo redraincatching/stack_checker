@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>		// to use INT_MIN as an error code
 
 #define SIZE 50
 
 typedef enum { 
+	DEFAULT,
 	EXIT,
 	PUSH, 
 	POP, 
@@ -26,23 +28,29 @@ const static struct {
 	{SUB, "subtract"}
 };
 
-int stack[SIZE];
-int stack_ptr = -1;		// this is more of a pseudo-pointer tbh
-						// set to the current highest full index
+typedef struct {
+	int stack[SIZE];
+	int ptr;		// this is more of a pseudo-pointer tbh
+} Stack;
 
-void push();
-void pop();
-void or();
-void and();
-void add();
-void subtract();
-void display();
-cmd input_to_enum(const char* str);
+void init_stack(Stack *s);
+void push(Stack *s);
+int pop(Stack *s);
+void or(Stack *s);
+void and(Stack *s);
+void add(Stack *s);
+void subtract(Stack *s);
+void display(Stack *s);
+cmd input_to_enum(const char *str);
 
 int main() {
 	int running = 1;
 	char input[10] = { 0 };
-	cmd inp = EXIT;
+	cmd inp;
+	int push_val;
+
+	Stack stack;
+	init_stack(&stack);
 
 	while (running) {
 		// read user input
@@ -53,28 +61,30 @@ int main() {
 
 		switch (inp) {
 			case PUSH:
-				push();
-				display();
+				printf("enter a value: ");
+				scanf_s("%d", &push_val);
+				push(&stack, push_val);
+				display(&stack);
 				break;
 			case POP:
-				pop();
-				display();
+				pop(&stack);
+				display(&stack);
 				break;
 			case OR:
-				or();
-				display();
+				or(&stack);
+				display(&stack);
 				break;
 			case AND:
-				and();
-				display();
+				and(&stack);
+				display(&stack);
 				break;
 			case ADD:
-				add();
-				display();
+				add(&stack);
+				display(&stack);
 				break;
 			case SUB:
-				subtract();
-				display();
+				subtract(&stack);
+				display(&stack);
 				break;
 			case EXIT:
 				running = 0;
@@ -86,77 +96,87 @@ int main() {
 	}
 }
 
-void push() {
-	int val;
+void init_stack(Stack *s) {
+	s->ptr = -1;
+}
 
-	if (stack_ptr == SIZE - 1) {
+void push(Stack *s, int val) {
+	if (s->ptr >= SIZE - 1) {
 		printf("overflow, cannot execute\n");
-		return;
 	}
 	else {
-		printf("enter a value: ");
-		scanf_s("%d", &val);
-
-		stack[++stack_ptr] = val;
+		s->ptr++;
+		s->stack[(s->ptr)] = val;
 	}	
 }
 
-void pop() {
-	if (stack_ptr < 0) {
+int pop(Stack *s) {
+	if (s->ptr < 0) {
 		printf("underflow, cannot execute\n");
+		return INT_MIN;
+	}
+	else if (s->ptr >= SIZE - 1) {
+		printf("error: stack is full\n");
+		return INT_MIN;
 	}
 	else {
-		stack_ptr--;
+		int temp = s->stack[s->ptr];
+		s->ptr--;
+		return temp;
 	}
 }
 
-void or() {
-	if (stack_ptr < 1) {
-		printf("not enough operands in the stack to execute this");
+void or(Stack *s) {
+	if (s->ptr < 1) {
+		printf("not enough operands in the stack to execute this\n");
 	}
 	else {
-		stack[stack_ptr - 1] = (stack[stack_ptr - 1] | stack[stack_ptr]);
-		stack_ptr--;
+		int x = pop(s);
+		int y = pop(s);
+		push(s, (x | y));
 	}
 }
 
-void and() {
-	if (stack_ptr < 1) {
-		printf("not enough operands in the stack to execute this");
+void and(Stack *s) {
+	if (s->ptr < 1) {
+		printf("not enough operands in the stack to execute this\n");
 	}
 	else {
-		stack[stack_ptr - 1] = (stack[stack_ptr - 1] & stack[stack_ptr]);
-		stack_ptr--;
+		int x = pop(s);
+		int y = pop(s);
+		push(s, (x & y));
 	}
 }
 
-void add() {
-	if (stack_ptr < 1) {
-		printf("not enough operands in the stack to execute this");
+void add(Stack *s) {
+	if (s->ptr < 1) {
+		printf("not enough operands in the stack to execute this\n");
 	}
 	else {
-		stack[stack_ptr - 1] = (stack[stack_ptr - 1] + stack[stack_ptr]);
-		stack_ptr--;
+		int x = pop(s);
+		int y = pop(s);
+		push(s, (x + y));
 	}
 }
 
-void subtract() {
-	if (stack_ptr < 1) {
-		printf("not enough operands in the stack to execute this");
+void subtract(Stack *s) {
+	if (s->ptr < 1) {
+		printf("not enough operands in the stack to execute this\n");
 	}
 	else {
-		stack[stack_ptr - 1] = (stack[stack_ptr - 1] - stack[stack_ptr]);
-		stack_ptr--;
+		int x = pop(s);
+		int y = pop(s);
+		push(s, (y - x));
 	}
 }
 
-void display() {
-	for (int i = stack_ptr; i >= 0; i--) {
-		printf("[%4s%d%5s\n", " ", stack[i], "]");
+void display(Stack *s) {
+	for (int i = s->ptr; i >= 0; i--) {
+		printf("[%4s%d%5s\n", " ", s->stack[i], "]");
 	}
 }
 
-cmd input_to_enum(const char* str) {
+cmd input_to_enum(const char *str) {
 	int j;
 	for (j = 0; j < sizeof(conversion) / sizeof(conversion[0]); ++j) {
 		if (!strcmp(str, conversion[j].str)) {
@@ -164,5 +184,5 @@ cmd input_to_enum(const char* str) {
 		}
 	}
 
-	return EXIT;
+	return DEFAULT;
 }
